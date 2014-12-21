@@ -1,0 +1,55 @@
+<html>
+  <head>
+    <!-- lib -->
+    <script src="lib/jquery/jquery-2.1.3.min.js"></script>
+    <script src="lib/underscore/underscore-1.7.0.min.js"></script>
+    <script src="lib/backbone/backbone-1.1.2.min.js"></script>
+    <script src="lib/d3/d3-3.5.2.min.js"></script>
+    <!-- src -->
+    <script src="src/lib_extensions/d3.js"></script>
+    <script src="src/root.js"></script>
+    <script src="src/util/util.js"></script>
+    <script src="src/util/keys.js"></script>
+    <script src="src/views/view.js"></script>
+    <script src="src/views/plot_components.js"></script>
+    <script src="src/plotter.js"></script>
+    <link rel="stylesheet" type="text/css" href="src/plot.css"></link>
+  </head>
+  <body>
+    <h1>Source Flow Plotter</h1>
+    <div class='index-mode-buttons'>
+      <button class='step-button' data-index-mode='step'>Step</button>
+      <button class='time-button' data-index-mode='time'>Time</button>
+      <button class='histogram-button' data-index-mode='histogram'>Histogram</button>
+    </div>
+    <input class='filter' type='text' placeholder="e.g. 'lines 5-15'"></input>
+    <pre class='side-effect-label'>side effects (try hovering on a green point):</pre>
+    <pre class='side-effect'></pre>
+    <p class='browser-disclaimer'>
+      This code has only been tested in Google Chrome. It might not work elsewhere.
+    </p>
+    <div class='svg-container'>
+      <svg>
+        <g class='svg-contents'>
+          <g class='plot'>
+            <g class='index-axis plot-axis'>
+              <text class='index-numbers axis-numbers'></text>
+            </g>
+            <g class='code-axis plot-axis'>
+              <text class='code-line-numbers axis-numbers'></text>
+            </g>
+            <g class='plot-body'>
+              <g class='bar-selectors-container'>
+                <g class='index-bar-selectors bar-selectors'></g>
+                <g class='code-bar-selectors bar-selectors'></g>
+              </g>
+              <g class='flow-points'></g>
+              <text class='code-lines'></text>
+            </g>
+          </g>
+          <text class='code-text'></text>
+        </g>
+      </svg>
+    </div>
+  </body>
+</html>
