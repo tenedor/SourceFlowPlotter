@@ -267,7 +267,7 @@ var CodeLineAxis = views.CodeLineAxis = PlotComponent.extend({
     this.selection.select('g').append('text')
       .classed('axis-label', true)
       .classed('code-axis-label', true)
-      .text('coins.py')
+      .text('test.py') // TODO: generalize beyond single file
       .attr('text-anchor', 'middle')
       .attr('x', -this.layout.height / 2)
       .attr('y', 0)
@@ -294,31 +294,27 @@ var CodeLineNumbers = views.CodeLineNumbers = PlotComponent.extend({
   update: function(data) {
     PlotComponent.prototype.update.apply(this, arguments);
 
-    var codeLineNumber, layout, codeLines, codeLinesDomain, codeLinesHeightUnit;
+    var codeLineNumber, layout, codeLinesDomain, codeLineHeightUnit,
+        codeLineNumbers, sourceCode;
 
     layout = this.layout;
-    codeLines = this.data.codeLines;
     codeLinesDomain = this.codeLinesDomain;
     codeLineHeightUnit = this.codeLineHeightUnit;
+    codeLineNumbers = this.data.codeLineNumbers;
+    sourceCode = this.data.sourceCode;
 
     codeLineNumber = this.selection.selectAll('tspan.code-line-number')
-      .data(codeLines, function(codeLine){
-        return codeLine && codeLine.codeLineNumber || 0});
+      .data(codeLineNumbers, function(lineNumber){return lineNumber;});
     codeLineNumber.enter().append('tspan')
       .classed('code-line-number', true)
       .classed('axis-number', true)
-      .text(function(codeLine){
-        return codeLine && codeLine.codeLineNumber || null;})
+      .text(function(lineNumber){return lineNumber || null;})
       .attr('text-anchor', 'end')
       .attr('alignment-baseline', 'middle')
-      .attr('data-code-line-number', function(codeLine){
-        return codeLine && codeLine.codeLineNumber || null;})
+      .attr('data-code-line-number', function(lineNumber){return lineNumber;})
       .attr('x', 0)
-      .attr('y', function(codeLine){
-        var CLHU = codeLineHeightUnit;
-        return ((codeLine && codeLine.codeLineNumber)
-          ? ((codeLine.codeLineNumber - codeLinesDomain[0] + 0.5) * CLHU)
-          : null);})
+      .attr('y', function(lineNumber){
+        return (lineNumber - codeLinesDomain[0] + 0.5) * codeLineHeightUnit;})
       .style('opacity', 0);
 
     this.updateContext();
@@ -326,18 +322,12 @@ var CodeLineNumbers = views.CodeLineNumbers = PlotComponent.extend({
     codeLineHeightUnit = this.codeLineHeightUnit;
 
     codeLineNumber.transition().duration(700)
-      .attr('y', function(codeLine){
-        var CLHU = codeLineHeightUnit;
-        return ((codeLine && codeLine.codeLineNumber)
-          ? ((codeLine.codeLineNumber - codeLinesDomain[0] + 0.5) * CLHU)
-          : null);})
+      .attr('y', function(lineNumber){
+        return (lineNumber - codeLinesDomain[0] + 0.5) * codeLineHeightUnit;})
       .style('opacity', 1);
     codeLineNumber.exit().transition().duration(700)
-      .attr('y', function(codeLine){
-        var CLHU = codeLineHeightUnit;
-        return ((codeLine && codeLine.codeLineNumber)
-          ? ((codeLine.codeLineNumber - codeLinesDomain[0] + 0.5) * CLHU)
-          : null);})
+      .attr('y', function(lineNumber){
+        return (lineNumber - codeLinesDomain[0] + 0.5) * codeLineHeightUnit;})
       .style('opacity', 0)
       .remove();
   }
@@ -355,9 +345,9 @@ var PlotBody = views.PlotBody = PlotComponent.extend({
         this.layout.barSelectorsContainer,
         {eventHub: this.eventHub});
 
-    this.flowPoints = new views.FlowPoints(
-        this.selection.select('.flow-points'),
-        this.layout.flowPoints,
+    this.flowPointBars = new views.FlowPointBars(
+        this.selection.select('.flow-point-bars'),
+        this.layout.flowPointBars,
         {eventHub: this.eventHub});
 
     this.codeLines = new views.CodeLines(
@@ -371,7 +361,7 @@ var PlotBody = views.PlotBody = PlotComponent.extend({
     PlotComponent.prototype.update.apply(this, arguments);
 
     this.barSelectorsContainer.update(data);
-    this.flowPoints.update(data);
+    this.flowPointBars.update(data);
     this.codeLines.update(data);
   }
 
@@ -383,41 +373,37 @@ var CodeLines = views.CodeLines = PlotComponent.extend({
   update: function(data) {
     PlotComponent.prototype.update.apply(this, arguments);
 
-    var codeLine, enteredCodeLine, layout, codeLines, codeLinesDomain,
-        codeLineHeightUnit;
+    var codeLine, enteredCodeLine, layout, codeLinesDomain, codeLineHeightUnit,
+        codeLineNumbers, sourceCode;
 
     layout = this.layout;
-    codeLines = this.data.codeLines;
     codeLinesDomain = this.codeLinesDomain;
     codeLineHeightUnit = this.codeLineHeightUnit;
+    codeLineNumbers = this.data.codeLineNumbers;
+    sourceCode = this.data.sourceCode;
 
     codeLine = this.selection.selectAll('tspan.code-line')
-      .data(codeLines, function(codeLine){
-        return codeLine && codeLine.codeLineNumber || 0});
+      .data(codeLineNumbers, function(lineNumber){return lineNumber;});
     enteredCodeLine = codeLine.enter().append('tspan')
       .classed('code-line', true)
-      .attr('data-code-line-number', function(codeLine){
-        return codeLine && codeLine.codeLineNumber || null;})
+      .attr('data-code-line-number', function(lineNumber){return lineNumber;})
       .attr('x', 0)
-      .attr('y', function(codeLine){
-        var CLHU = codeLineHeightUnit;
-        return ((codeLine && codeLine.codeLineNumber)
-          ? ((codeLine.codeLineNumber - codeLinesDomain[0] + 0.5) * CLHU)
-          : null);})
+      .attr('y', function(lineNumber){
+        return (lineNumber - codeLinesDomain[0] + 0.5) * codeLineHeightUnit;})
       .style('opacity', 0);
     enteredCodeLine.append('tspan')
       .classed('transparent', true)
       .classed('code-line-indentation', true)
-      .text(function(codeLine){
+      .text(function(lineNumber){
         // use transparent `#` markers to preserve whitespace
-        codeLine = (codeLine && codeLine.codeText || '');
+        var codeLine = (sourceCode[lineNumber].codeText || '');
         var whitespaceLength = codeLine.length - codeLine.trimLeft().length;
         return Array(whitespaceLength + 1).join('#');})
       .attr('alignment-baseline', 'middle');
     enteredCodeLine.append('tspan')
       .classed('code-line-text', true)
-      .text(function(codeLine){
-        return (codeLine && codeLine.codeText || '').trimLeft();})
+      .text(function(lineNumber){
+        return (sourceCode[lineNumber].codeText || '').trimLeft();})
       .attr('alignment-baseline', 'middle');
 
     this.updateContext();
@@ -425,18 +411,12 @@ var CodeLines = views.CodeLines = PlotComponent.extend({
     codeLineHeightUnit = this.codeLineHeightUnit;
 
     codeLine.transition().duration(700)
-      .attr('y', function(codeLine){
-        var CLHU = codeLineHeightUnit;
-        return ((codeLine && codeLine.codeLineNumber)
-          ? ((codeLine.codeLineNumber - codeLinesDomain[0] + 0.5) * CLHU)
-          : null);})
+      .attr('y', function(lineNumber){
+        return (lineNumber - codeLinesDomain[0] + 0.5) * codeLineHeightUnit;})
       .style('opacity', 1);
     codeLine.exit().transition().duration(700)
-      .attr('y', function(codeLine){
-        var CLHU = codeLineHeightUnit;
-        return ((codeLine && codeLine.codeLineNumber)
-          ? ((codeLine.codeLineNumber - codeLinesDomain[0] + 0.5) * CLHU)
-          : null);})
+      .attr('y', function(lineNumber){
+        return (lineNumber - codeLinesDomain[0] + 0.5) * codeLineHeightUnit;})
       .style('opacity', 0)
       .remove();
   }
@@ -513,27 +493,22 @@ var CodeBarSelectors = views.CodeBarSelectors = PlotComponent.extend({
   update: function(data) {
     PlotComponent.prototype.update.apply(this, arguments);
 
-    var codeBar, layout, codeLines, codeLinesDomain, codeLinesHeightUnit;
+    var codeBar, layout, codeLinesDomain, codeLineHeightUnit, codeLineNumbers;
 
     layout = this.layout;
-    codeLines = this.data.codeLines;
     codeLinesDomain = this.codeLinesDomain;
     codeLineHeightUnit = this.codeLineHeightUnit;
+    codeLineNumbers = this.data.codeLineNumbers;
 
     codeBar = this.selection.selectAll('rect.code-bar-selector')
-      .data(codeLines, function(codeLine){
-        return codeLine && codeLine.codeLineNumber || 0});
+      .data(codeLineNumbers, function(lineNumber){return lineNumber;});
     codeBar.enter().append('rect')
       .classed('code-bar-selector', true)
       .classed('bar-selector', true)
-      .attr('data-code-line-number', function(codeLine){
-        return codeLine && codeLine.codeLineNumber || null;})
+      .attr('data-code-line-number', function(lineNumber){return lineNumber;})
       .attr('x', 0)
-      .attr('y', function(codeLine){
-        var CLHU = codeLineHeightUnit;
-        return ((codeLine && codeLine.codeLineNumber)
-          ? ((codeLine.codeLineNumber - codeLinesDomain[0]) * CLHU)
-          : null);})
+      .attr('y', function(lineNumber){
+        return (lineNumber - codeLinesDomain[0]) * codeLineHeightUnit;})
       .attr('width', this.layout.width)
       .attr('height', codeLineHeightUnit);
 
@@ -542,18 +517,12 @@ var CodeBarSelectors = views.CodeBarSelectors = PlotComponent.extend({
     codeLineHeightUnit = this.codeLineHeightUnit;
 
     codeBar.transition().duration(700)
-      .attr('y', function(codeLine){
-        var CLHU = codeLineHeightUnit;
-        return ((codeLine && codeLine.codeLineNumber)
-          ? ((codeLine.codeLineNumber - codeLinesDomain[0]) * CLHU)
-          : null);})
+      .attr('y', function(lineNumber){
+        return (lineNumber - codeLinesDomain[0]) * codeLineHeightUnit;})
       .attr('height', codeLineHeightUnit);
     codeBar.exit().transition().duration(700)
-      .attr('y', function(codeLine){
-        var CLHU = codeLineHeightUnit;
-        return ((codeLine && codeLine.codeLineNumber)
-          ? ((codeLine.codeLineNumber - codeLinesDomain[0]) * CLHU)
-          : null);})
+      .attr('y', function(lineNumber){
+        return (lineNumber - codeLinesDomain[0]) * codeLineHeightUnit;})
       .attr('height', codeLineHeightUnit)
       .remove();
   }
@@ -561,46 +530,46 @@ var CodeBarSelectors = views.CodeBarSelectors = PlotComponent.extend({
 });
 
 
-var FlowPoints = views.FlowPoints = PlotComponent.extend({
+var FlowPointBars = views.FlowPointBars = PlotComponent.extend({
 
   bindList: {
-    onMouseEnterFlowPoint: 'passFutureContext',
-    onMouseLeaveFlowPoint: 'passFutureContext'
+    onMouseEnterFlowPointBar: 'passFutureContext',
+    onMouseLeaveFlowPointBar: 'passFutureContext'
   },
 
 
   update: function(data) {
     PlotComponent.prototype.update.apply(this, arguments);
 
-    var flowPoint, layout, flowPoints, codeLines, codeLinesDomain,
-        codeLineHeightUnit, indexDomain, indexWidthUnit;
+    var flowPointBar, layout, flowPoints, codeLinesDomain, codeLineHeightUnit,
+        indexDomain, indexWidthUnit;
 
     layout = this.layout;
     flowPoints = this.data.flowPoints;
-    codeLines = this.data.codeLines;
     codeLinesDomain = this.codeLinesDomain;
     codeLineHeightUnit = this.codeLineHeightUnit;
     indexDomain = this.indexDomain;
     indexWidthUnit = this.indexWidthUnit;
 
-    flowPoint = this.selection.selectAll('rect.flow-point')
-      .data(flowPoints, function(d){return d[UID];});
-    flowPoint.enter().append('rect')
-      .classed('flow-point', true)
-      .classed('has-side-effect', function(flowPoint){
-        return !!flowPoint[SIDE_EFFECTS].length;})
+    flowPointBar = this.selection.selectAll('rect.flow-point-bar')
+      .data(flowPoints, function(flowPoint){return flowPoint.id;});
+    flowPointBar.enter().append('rect')
+      .classed('flow-point-bar', true)
+      //.classed('has-side-effect', function(flowPoint){
+        //return !!flowPoint[SIDE_EFFECTS].length;})
+      .attr('data-uid', function(flowPoint){return flowPoint.uid;})
       .attr('data-code-line-number', function(flowPoint){
-        return flowPoint[CODE_LINE_NUMBER];})
-      .attr('x', function(flowPoint, i){
-        return (flowPoint[INDEX] - indexDomain[0]) * indexWidthUnit || 0;})
+        return flowPoint.lineNumber;})
+      .attr('x', function(flowPoint){
+        return (flowPoint.d.index - indexDomain[0]) * indexWidthUnit || 0;})
       .attr('y', function(flowPoint){
-        return (flowPoint[CODE_LINE_NUMBER] - codeLinesDomain[0]) * codeLineHeightUnit;})
+        return (flowPoint.lineNumber - codeLinesDomain[0]) * codeLineHeightUnit;})
       .attr('width', function(flowPoint){
-        return flowPoint[LENGTH] * indexWidthUnit || 1;})
+        return flowPoint.d.length * indexWidthUnit || 1;})
       .attr('height', codeLineHeightUnit)
       .style('opacity', 0)
-      .on('mouseenter', this.onMouseEnterFlowPoint)
-      .on('mouseleave', this.onMouseLeaveFlowPoint);
+      .on('mouseenter', this.onMouseEnterFlowPointBar)
+      .on('mouseleave', this.onMouseLeaveFlowPointBar);
 
     this.updateContext();
     codeLinesDomain = this.codeLinesDomain;
@@ -608,39 +577,41 @@ var FlowPoints = views.FlowPoints = PlotComponent.extend({
     indexDomain = this.indexDomain;
     indexWidthUnit = this.indexWidthUnit;
 
-    flowPoint.transition().duration(700)
-      .attr('x', function(flowPoint, i){
-        return (flowPoint[INDEX] - indexDomain[0]) * indexWidthUnit || 0;})
+    flowPointBar.transition().duration(700)
+      .attr('x', function(flowPoint){
+        return (flowPoint.d.index - indexDomain[0]) * indexWidthUnit || 0;})
       .attr('y', function(flowPoint){
-        return (flowPoint[CODE_LINE_NUMBER] - codeLinesDomain[0]) * codeLineHeightUnit;})
+        return (flowPoint.lineNumber - codeLinesDomain[0]) * codeLineHeightUnit;})
       .attr('width', function(flowPoint){
-        return flowPoint[LENGTH] * indexWidthUnit || 1;})
+        return flowPoint.d.length * indexWidthUnit || 1;})
       .attr('height', codeLineHeightUnit)
       .style('opacity', 1);
-    flowPoint.exit().transition().duration(700)
-      .attr('x', function(flowPoint, i){
-        return (flowPoint[INDEX] - indexDomain[0]) * indexWidthUnit || 0;})
+    flowPointBar.exit().transition().duration(700)
+      .attr('x', function(flowPoint){
+        return (flowPoint.d.index - indexDomain[0]) * indexWidthUnit || 0;})
       .attr('y', function(flowPoint){
-        return (flowPoint[CODE_LINE_NUMBER] - codeLinesDomain[0]) * codeLineHeightUnit;})
+        return (flowPoint.lineNumber - codeLinesDomain[0]) * codeLineHeightUnit;})
       .style('opacity', 0)
       .remove();
   },
 
 
-  onMouseEnterFlowPoint: function(target, flowPointData) {
+  onMouseEnterFlowPointBar: function(target, flowPoint) {
     var sideEffects;
 
-    this.eventHub.trigger('select:flowPoint', flowPointData);
+    this.eventHub.trigger('select:flowPoint', flowPoint);
 
-    sideEffects = flowPointData[SIDE_EFFECTS];
+    /* TODO: reinstate side effects
+    sideEffects = flowPoint[SIDE_EFFECTS];
     if (sideEffects) {
       this.eventHub.trigger('show:sideEffects', sideEffects);
     };
+    */
   },
 
 
-  onMouseLeaveFlowPoint: function(target, flowPointData) {
-    this.eventHub.trigger('unselect:flowPoint', flowPointData);
+  onMouseLeaveFlowPointBar: function(target, flowPoint) {
+    this.eventHub.trigger('unselect:flowPoint', flowPoint);
     this.eventHub.trigger('hide:sideEffects', null);
   }
 
@@ -662,11 +633,11 @@ var CodeText = views.CodeText = View.extend({
 
 
   selectCodeLineNumber: function(codeLineNumber) {
-    var codeLinesDomain, codeLines, activeCodeLineNumber, min, max,
-        nearbyCodeLines, codeTextLine;
+    var codeTextLine, sourceCode, codeLinesDomain, activeCodeLineNumber, min,
+        max, codeLineNumbers;
 
+    sourceCode = this.data.sourceCode;
     codeLinesDomain = this.data.codeLinesDomain;
-    codeLines = this.data.codeLines;
     activeCodeLineNumber = this.activeCodeLineNumber = codeLineNumber;
 
     // get code lines nearby the given code line number
@@ -676,23 +647,21 @@ var CodeText = views.CodeText = View.extend({
       min = Math.max(codeLinesDomain[0], max - 4);
     };
 
-    nearbyCodeLines = _.filter(codeLines, function(codeLine){
-      return min <= codeLine.codeLineNumber && codeLine.codeLineNumber <= max;
-    });
+    codeLineNumbers = _.range(min, max + 1);
 
     codeTextLine = this.selection.selectAll('tspan.code-text-line')
-      .data(nearbyCodeLines, function(codeLine){
-        return codeLine.codeLineNumber;});
+      .data(codeLineNumbers, function(lineNumber){return lineNumber;});
     codeTextLine.enter().insert('tspan')
       .classed('code-text-line', true)
-      .attr('opacity', function(codeLine){
-        return codeLine.codeText.trim() ? null : 0;})
+      .attr('opacity', function(lineNumber){
+        return sourceCode[lineNumber].codeText.trim() ? null: 0;})
       .attr('x', 0)
       .attr('dy', '1.2em')
-      .text(function(codeLine){return codeLine.codeText.trim() || '#';});
+      .text(function(lineNumber){
+        return sourceCode[lineNumber].codeText.trim() || '#';})
     codeTextLine
-      .classed('selected', function(codeLine){
-        return codeLine.codeLineNumber === activeCodeLineNumber;});
+      .classed('selected', function(lineNumber){
+        return lineNumber === activeCodeLineNumber;});
     codeTextLine.exit().remove();
   }
 
