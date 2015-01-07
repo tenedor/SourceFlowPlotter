@@ -1,21 +1,95 @@
 /*
- * `flowPoints` data is an array of `flowPoint` arrays.
- *
- * Each `flowPoint` array has length 9 and follows the format:
- *   [step/uid, index, length, timeEnter, timeExit, filename, codeLineNumber,
- *      codeLine, [sideEffect, ...]]
- * Or, in terms of types:
- *   [int, int, int, float, float, string, int, string, [string, ...]]
- * More verbosely:
- *   step/uid (int): the ordinal index of this point and its unique ID
- *   index (int): the plot position for this point (depends on the index mode)
- *   length (int): the plot length for this point (depends on the index mode)
- *   timeEnter (float): the elapsed time when this point's evaluation began
- *   timeExit (float): the elapsed time when this point's evaluation ended
- *   filename (string): the name of the file this point belongs to
- *   codeLineNumber (int): the file's line number this point represents
- *   codeLine (string): the text of the line of code this point represents
- *   sideEffects (strings array): a list of side effects occurring at this point
+
+ ** Overview **
+ ==============
+
+ A plotter operates on source flow data extracted in a program trace. After
+ being initialized, a plotter instance should be updated with a source flow data
+ object containing the following properties:
+
+  `flowPoints`: an array of flow point nodes.
+  `flowGroups`: an array of group nodes.
+  `flowTree`: the root node of the control flow tree.
+  `sourceCode`: an object with an array of code lines for each source file.
+  `_data`: the JSON-decoded data object fetched from the server.
+
+ In its update call, the plotter stores this object in its `originalData`
+ property. The original data is successively transformed through filter and
+ index operations. These operations are run each time the filter or the index
+ mode changes, and the most recent output of each operation is stored as
+ `filteredData` or `indexedData`. Each time `indexedData` is recomputed it is
+ passed to the plot views through their update methods.
+
+
+ ** Control flow tree: node formats **
+ ====================================
+
+ NOTE: treat everything outside a node's data container as immutable.
+
+ rootNode = {
+   // -- READ ONLY! -- //
+   type: 'root',
+   id: 'root',
+   name: 'root',
+   parent: null,
+   depth: -1,
+   externalChildren: [flowGroup, ...],
+   externalCodeLineRanges: {<fileID>: [[first, last], ...], ...},
+   stepRange: [0, last],
+   timeRange: [0, exit]
+
+   // -- data container -- //
+   d: {...}
+ }
+
+ flowGroupNode = {
+   // -- READ ONLY! -- //
+   type: 'flowGroup',
+   id: flowGroupUID,
+   uid: 'flowGroup:' + flowGroupUID,
+   fileName: fileName,
+   lineNumber: lineNumber,
+   name: functionName,
+   parent: parent,
+   depth: depth,
+   internalChildren: [child, ...],
+   internalCodeLineRange: [first, last],
+   externalChildren: [flowGroup, ...],
+   externalCodeLineRanges: {<fileID>: [[first, last], ...], ...},
+   recursiveInternalChilden: [flowGroup, ...],
+   recursiveInternalCodeLineRanges: [[first, last], ...],
+   stepRange: [first, last],
+   timeRange: [enter, exit],
+
+   // -- data container -- //
+   d: {...}
+ }
+
+ flowPointNode = {
+   // -- READ ONLY! -- //
+   type: 'flowPoint',
+   id: flowPointUID,
+   uid: 'flowPoint:' + flowPointUID,
+   fileName: fileName,
+   lineNumber: lineNumber,
+   code: codeLines[fileName][lineNumber],
+   parent: parent,
+   depth: depth,
+   internalChildren: [child, ...],
+   internalCodeLineRange: [first, last],
+   externalChildren: [flowGroup, ...],
+   externalCodeLineRanges: {<fileID>: [[first, last], ...], ...},
+   recursiveInternalChilden: [child, ...],
+   recursiveInternalCodeLineRanges: [[first, last], ...],
+   stepRange: [first, last],
+   timeRange: [enter, exit],
+   individualStepIndex: step,
+   individualTimeRange: [enter, exit],
+
+   // -- data container -- //
+   d: {...}
+ }
+
  */
 
 
@@ -23,49 +97,10 @@
 
 var util = sfp.util;
 var views = sfp.views;
-var View = views.View;
-var PlotComponent = views.PlotComponent;
-
-// GLOBALS
-this.STEP = 0;
-this.UID = STEP;
-this.INDEX = 1;
-this.LENGTH = 2;
-this.TIME_ENTER = 3;
-this.TIME_EXIT = 4;
-this.FILENAME = 5;
-this.CODE_LINE_NUMBER = 6;
-this.CODE_LINE = 7;
-this.SIDE_EFFECTS = 8;
-
-// for now, data is hardcoded to a demo script called `coins.py`
-var DATA_URL = 'data/coins.py.extract.json';
 
 
-// begin: create plotter and fetch flow points data for it
-$(document).ready(function() {
-  sfp.plotter = new sfp.Plotter();
-  fetchData(DATA_URL, sfp.plotter.setData);
-});
-
-
-// fetch, parse, and set up flow points data
-var fetchData = function(url, callback) {
-  $.getJSON(url, function(data) {
-    var flowPointsData = _.map(data.lines, function(flowPoint, index) {
-      flowPoint[0] = parseFloat(flowPoint[0]); // time enter
-      flowPoint[1] = parseFloat(flowPoint[1]); // time exit
-      flowPoint[3] = parseInt(flowPoint[3]);   // line number
-      flowPoint.unshift(0.8);                  // default length (step mode)
-      flowPoint.unshift(index);                // default index (step mode)
-      flowPoint.unshift(index);                // step index and unique id
-      return flowPoint;
-    });
-
-    _.isFunction(callback) && callback(flowPointsData);
-  });
-};
-
+// Plotter Class
+// -------------
 
 var Plotter = sfp.Plotter = function(options) {
   this.options = options || {};
@@ -73,6 +108,10 @@ var Plotter = sfp.Plotter = function(options) {
   this._bindMethods(this.bindList);
   this.initialize();
 };
+
+
+// Instance Methods
+// ----------------
 
 _.extend(Plotter.prototype, Backbone.Events, {
 
@@ -100,7 +139,7 @@ _.extend(Plotter.prototype, Backbone.Events, {
             indexBarSelectors: {height: 400, width: 500, transform: ''},
             codeBarSelectors: {height: 400, width: 500, transform: ''}
           },
-          flowPoints: {height: 400, width: 500, transform: ''}
+          flowPointBars: {height: 400, width: 500, transform: ''}
         }
       },
       codeText: {height: 100, width: 500, transform: 'translate(50, 460)'}
@@ -109,7 +148,7 @@ _.extend(Plotter.prototype, Backbone.Events, {
 
 
   bindList: {
-    setData: 'bind',
+    update: 'bind',
     updateFilter: 'bind',
     updateIndexMode: 'bind',
     filterData: 'bind',
@@ -207,24 +246,23 @@ _.extend(Plotter.prototype, Backbone.Events, {
   },
 
 
-  setData: function(flowPointsData) {
-    var codeLines, codeLinesMin, codeLinesMax;
-
-    codeLines = this.extractCodeLines(flowPointsData);
-    codeLinesMin = codeLines[0].codeLineNumber;
-    codeLinesMax = codeLines[codeLines.length - 1].codeLineNumber;
-
+  update: function(data) {
     this.originalData = {
-      flowPoints: flowPointsData,
-      codeLines: codeLines,
-      codeLinesDomain: [codeLinesMin, codeLinesMax]
+      flowPoints: data.flowPoints,
+      flowGroups: data.flowGroups,
+      sourceCode: data.sourceCode,
+      flowTree: data.flowTree,
+      _data: data._data
     };
 
     this.filterData({silent: true});
     this.indexData({silent: true});
 
     // set code text data and render the plot
-    this.codeText.update(this.originalData);
+    this.codeText.update({
+      sourceCode: this.originalData.sourceCode,
+      codeLinesDomain: this.codeLinesDomain(this.originalData.sourceCode)
+    });
     this.updatePlot();
   },
 
@@ -256,14 +294,20 @@ _.extend(Plotter.prototype, Backbone.Events, {
 
 
   filterData: function(options) {
-    var originalFlowPoints, flowPoints;
+    var originalFlowPoints, sourceCode, codeLinesDomain;
 
-    // TODO: "protect" originalData by limiting access through a cloning getter
+    // TODO: protect originalData by limiting access through a cloning getter
+    // TODO: this clone doesn't work. do we even want this given `.d` property?
     originalFlowPoints = util.nLevelClone(this.originalData.flowPoints, 2);
-    flowPoints = this.filterFn(originalFlowPoints);
+    sourceCode = this.originalData.sourceCode;
+    codeLinesDomain = this.codeLinesDomain(sourceCode, this.filter);
+    codeLineNumbers = _.range(codeLinesDomain[0], codeLinesDomain[1] + 1);
 
     this.filteredData = {
-      flowPoints: flowPoints
+      flowPoints: this.filterFn(originalFlowPoints),
+      sourceCode: sourceCode,
+      codeLinesDomain: codeLinesDomain,
+      codeLineNumbers: codeLineNumbers
     };
 
     if (!(options && options.silent)) {
@@ -273,30 +317,28 @@ _.extend(Plotter.prototype, Backbone.Events, {
 
 
   indexData: function(options) {
-    var filteredFlowPoints, indexFn, flowPoints, codeLines, codeLinesMin,
-        codeLinesMax;
+    var filteredFlowPoints, indexFn, flowPoints, indexMinPoint, indexMaxPoint,
+        indexMin, indexMax;
 
     // index flow points
+    // TODO: this clone doesn't work. do we even want this given `.d` property?
     filteredFlowPoints = util.nLevelClone(this.filteredData.flowPoints, 2);
     indexFn = Plotter.INDICES[this.indexMode].fn;
     flowPoints = indexFn(filteredFlowPoints);
 
-    codeLines = this.extractCodeLines(flowPoints);
-    codeLinesMin = codeLines[0].codeLineNumber;
-    codeLinesMax = codeLines[codeLines.length - 1].codeLineNumber;
-
     // calculate index dimensions
     indexMinPoint = _.min(flowPoints, function(flowPoint){
-      return flowPoint[INDEX];});
+      return flowPoint.d.index;});
     indexMaxPoint = _.max(flowPoints, function(flowPoint){
-      return flowPoint[INDEX] + flowPoint[LENGTH];});
-    indexMin = indexMinPoint[INDEX];
-    indexMax = indexMaxPoint[INDEX] + indexMaxPoint[LENGTH];
+      return flowPoint.d.index + flowPoint.d.length;});
+    indexMin = indexMinPoint.d.index;
+    indexMax = indexMaxPoint.d.index + indexMaxPoint.d.length;
 
     this.indexedData = {
       flowPoints: flowPoints,
-      codeLines: codeLines,
-      codeLinesDomain: [codeLinesMin, codeLinesMax],
+      sourceCode: this.filteredData.sourceCode,
+      codeLinesDomain: this.filteredData.codeLinesDomain,
+      codeLineNumbers: this.filteredData.codeLineNumbers,
       indexDomain: [indexMin, indexMax],
       index: Plotter.INDICES[this.indexMode]
     };
@@ -323,51 +365,38 @@ _.extend(Plotter.prototype, Backbone.Events, {
   },
 
 
-  extractCodeLines: function(flowPoints) {
-    var codeLinesMin, codeLines, i, codeLine, codeLinesMax, _codeLines;
-
-    // extract original code
-    codeLinesMin = Infinity;
-    codeLines = [];
-    for (i = 0; i < flowPoints.length; i++) {
-      codeLine = {
-        codeLineNumber: flowPoints[i][CODE_LINE_NUMBER],
-        codeText: flowPoints[i][CODE_LINE]
-      };
-      codeLines[flowPoints[i][CODE_LINE_NUMBER]] = codeLine;
-      codeLinesMin = Math.min(codeLinesMin, flowPoints[i][CODE_LINE_NUMBER]);
-    };
-    codeLinesMax = codeLines.length - 1;
-
-    // clean up codeLines
-    _codeLines = codeLines;
-    codeLines = [];
-    for (i = codeLinesMin; i < _codeLines.length; i++) {
-      codeLine = _codeLines[i] || {
-        codeLineNumber: i,
-        codeText: ''
-      };
-      codeLines.push(codeLine);
-    };
-
-    return codeLines;
-  },
-
-
   // TODO: class method?
   filterFn: function(flowPoints) {
-    var filter, max;
+    var filter, min, max;
 
     filter = this.filter;
     if (_.isArray(filter.lines) && filter.lines.length) {
       min = filter.lines[0][0];
       max = filter.lines[0][1];
       flowPoints = _.filter(flowPoints, function(flowPoint){
-        return (min <= flowPoint[CODE_LINE_NUMBER] &&
-            flowPoint[CODE_LINE_NUMBER] <= max);});
+        return (min <= flowPoint.lineNumber && flowPoint.lineNumber <= max);});
     };
 
     return flowPoints;
+  },
+
+
+  codeLinesDomain: function(sourceCode, filter) {
+    var lowest, highest, domain;
+
+    // unfiltered domain
+    // TODO: generalize beyond single file and single domain range
+    lowest = _.find(sourceCode); // find first non-empty code line
+    highest = sourceCode[sourceCode.length - 1];
+    domain = [lowest.codeLineNumber, highest.codeLineNumber];
+
+    // if filter is given, restrict domain based on filter
+    if (filter && _.isArray(filter.lines) && filter.lines.length) {
+      domain[0] = Math.max(domain[0], filter.lines[0][0]);
+      domain[1] = Math.min(domain[1], filter.lines[0][1]);
+    };
+
+    return domain;
   },
 
 
@@ -410,8 +439,8 @@ _.extend(Plotter.prototype, Backbone.Events, {
 
 var stepIndexed = Plotter.stepIndexed = function(dataPoints) {
   return _.map(dataPoints, function(dataPoint) {
-    dataPoint[INDEX] = dataPoint[STEP];
-    dataPoint[LENGTH] = 0.8;
+    dataPoint.d.index = dataPoint.individualStepIndex;
+    dataPoint.d.length = 0.8;
     return dataPoint;
   });
 };
@@ -419,22 +448,23 @@ var stepIndexed = Plotter.stepIndexed = function(dataPoints) {
 
 var timeIndexed = Plotter.timeIndexed = function(dataPoints) {
   return _.map(dataPoints, function(dataPoint) {
-    dataPoint[INDEX] = dataPoint[TIME_ENTER];
-    dataPoint[LENGTH] = dataPoint[TIME_EXIT] - dataPoint[TIME_ENTER];
+    var timeRange = dataPoint.individualTimeRange;
+    dataPoint.d.index = timeRange[0];
+    dataPoint.d.length = timeRange[1] - timeRange[0];
     return dataPoint;
   });
 };
 
 
 var stackedBarIndexed = Plotter.stackedBarIndexed = function(dataPoints) {
-  barHeights = [];
+  barLengths = [];
   return _.map(dataPoints, function(dataPoint) {
-    var codeLineNumber = dataPoint[CODE_LINE_NUMBER];
-    if (! barHeights[codeLineNumber]) {
-      barHeights[codeLineNumber] = 0;
+    var codeLineNumber = dataPoint.lineNumber;
+    if (!barLengths[codeLineNumber]) {
+      barLengths[codeLineNumber] = 0;
     };
-    dataPoint[INDEX] = barHeights[codeLineNumber]++;
-    dataPoint[LENGTH] = 0.8;
+    dataPoint.d.index = barLengths[codeLineNumber]++;
+    dataPoint.d.length = 0.8;
     return dataPoint;
   });
 };

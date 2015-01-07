@@ -103,11 +103,11 @@ svg {
   opacity: 0.2;
 }
 
-.plot-body > .flow-points > .flow-point {
+.plot-body > .flow-point-bars > .flow-point-bar {
   fill: #5bc0de;
 }
 
-.plot-body > .flow-points > .flow-point.has-side-effect {
+.plot-body > .flow-point-bars > .flow-point-bar.has-side-effect {
   fill: limegreen;
 }
 
@@ -123,7 +123,12 @@ pre, p.browser-disclaimer {
   color: #666;
 }
 
+pre.side-effect-label {
+  opacity: 0; /* temporary */
+}
+
 pre.side-effect {
+  opacity: 0; /* temporary */
   margin-left: 640px;
   margin-top: 220px;
 }
