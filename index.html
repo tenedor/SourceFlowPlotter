@@ -24,6 +24,9 @@
       <button class='histogram-button' data-index-mode='histogram'>Histogram</button>
     </div>
     <input class='filter' type='text' placeholder="e.g. 'lines 5-15'"></input>
+    <div class='toggles-container'>
+      <button class='groups-toggle'>Toggle Groups</button>
+    </div>
     <pre class='side-effect-label'>side effects (try hovering on a green point):</pre>
     <pre class='side-effect'></pre>
     <p class='browser-disclaimer'>
@@ -44,7 +47,8 @@
                 <g class='index-bar-selectors bar-selectors'></g>
                 <g class='code-bar-selectors bar-selectors'></g>
               </g>
-              <g class='flow-point-bars'></g>
+              <g class='flow-group-bars flow-node-bars'></g>
+              <g class='flow-point-bars flow-node-bars'></g>
               <text class='code-lines'></text>
             </g>
           </g>
