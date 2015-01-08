@@ -21,7 +21,7 @@
  passed to the plot views through their update methods.
 
 
- ** Control flow tree: node formats **
+ ** Control flow tree node formats **
  ====================================
 
  NOTE: treat everything outside a node's data container as immutable.
@@ -139,6 +139,7 @@ _.extend(Plotter.prototype, Backbone.Events, {
             indexBarSelectors: {height: 400, width: 500, transform: ''},
             codeBarSelectors: {height: 400, width: 500, transform: ''}
           },
+          flowGroupBars: {height: 400, width: 500, transform: ''},
           flowPointBars: {height: 400, width: 500, transform: ''}
         }
       },
@@ -229,6 +230,12 @@ _.extend(Plotter.prototype, Backbone.Events, {
       that.updateIndexMode(d3.select(this).attr('data-index-mode'));});
     this.updateIndexMode(this.indexMode, {silent: true});
 
+    // listen for groups display changes
+    this.groupsToggleButton = d3.select('button.groups-toggle');
+    this.groupsToggleButton.on('click', function(){
+      d3.select('.flow-group-bars').classed('transparent',
+        !d3.select('.flow-group-bars').classed('transparent'));});
+
     // listen for filter updates
     this.filterInputField.on('keyup', function() {
       var filter;
@@ -305,6 +312,7 @@ _.extend(Plotter.prototype, Backbone.Events, {
 
     this.filteredData = {
       flowPoints: this.filterFn(originalFlowPoints),
+      flowGroups: this.originalData.flowGroups, // TODO - filter
       sourceCode: sourceCode,
       codeLinesDomain: codeLinesDomain,
       codeLineNumbers: codeLineNumbers
@@ -317,30 +325,27 @@ _.extend(Plotter.prototype, Backbone.Events, {
 
 
   indexData: function(options) {
-    var filteredFlowPoints, indexFn, flowPoints, indexMinPoint, indexMaxPoint,
-        indexMin, indexMax;
+    var flowPoints, flowGroups, flowNodes, index, indexSummary, indexMin,
+        indexMax;
 
-    // index flow points
+    // index flow nodes
     // TODO: this clone doesn't work. do we even want this given `.d` property?
-    filteredFlowPoints = util.nLevelClone(this.filteredData.flowPoints, 2);
-    indexFn = Plotter.INDICES[this.indexMode].fn;
-    flowPoints = indexFn(filteredFlowPoints);
-
-    // calculate index dimensions
-    indexMinPoint = _.min(flowPoints, function(flowPoint){
-      return flowPoint.d.index;});
-    indexMaxPoint = _.max(flowPoints, function(flowPoint){
-      return flowPoint.d.index + flowPoint.d.length;});
-    indexMin = indexMinPoint.d.index;
-    indexMax = indexMaxPoint.d.index + indexMaxPoint.d.length;
+    flowPoints = util.nLevelClone(this.filteredData.flowPoints, 2);
+    flowGroups = util.nLevelClone(this.filteredData.flowGroups, 2);
+    flowNodes = flowPoints.concat(flowGroups);
+    index = Plotter.INDICES[this.indexMode];
+    indexSummary = index.fn(flowNodes);
+    indexMin = indexSummary.indexMin;
+    indexMax = indexSummary.indexMax;
 
     this.indexedData = {
       flowPoints: flowPoints,
+      flowGroups: flowGroups,
       sourceCode: this.filteredData.sourceCode,
       codeLinesDomain: this.filteredData.codeLinesDomain,
       codeLineNumbers: this.filteredData.codeLineNumbers,
       indexDomain: [indexMin, indexMax],
-      index: Plotter.INDICES[this.indexMode]
+      index: index
     };
 
     if (!(options && options.silent)) {
@@ -437,36 +442,133 @@ _.extend(Plotter.prototype, Backbone.Events, {
 // Class Methods
 // -------------
 
-var stepIndexed = Plotter.stepIndexed = function(dataPoints) {
-  return _.map(dataPoints, function(dataPoint) {
-    dataPoint.d.index = dataPoint.individualStepIndex;
-    dataPoint.d.length = 0.8;
-    return dataPoint;
-  });
-};
+/*
 
+flowGroupNode = {
+  type: 'flowGroup',
+  id: flowGroupUID,
+  uid: 'flowGroup:' + flowGroupUID,
+  stepRange: [first, last],
+  timeRange: [enter, exit],
+}
 
-var timeIndexed = Plotter.timeIndexed = function(dataPoints) {
-  return _.map(dataPoints, function(dataPoint) {
-    var timeRange = dataPoint.individualTimeRange;
-    dataPoint.d.index = timeRange[0];
-    dataPoint.d.length = timeRange[1] - timeRange[0];
-    return dataPoint;
-  });
-};
+flowPointNode = {
+  type: 'flowPoint',
+  id: flowPointUID,
+  uid: 'flowPoint:' + flowPointUID,
+  stepRange: [first, last],
+  timeRange: [enter, exit],
+  individualStepIndex: step,
+  individualTimeRange: [enter, exit],
 
+ */
 
-var stackedBarIndexed = Plotter.stackedBarIndexed = function(dataPoints) {
-  barLengths = [];
-  return _.map(dataPoints, function(dataPoint) {
-    var codeLineNumber = dataPoint.lineNumber;
-    if (!barLengths[codeLineNumber]) {
-      barLengths[codeLineNumber] = 0;
+var stepIndexed = Plotter.stepIndexed = function(flowNodes) {
+  var stats = {
+    indexMin: Infinity,
+    indexMax: -Infinity
+  };
+
+  _.each(flowNodes, function(flowNode) {
+    var d = flowNode.d;
+    d.self || (d.self = {});
+    d.full || (d.full = {});
+
+    if (flowNode.type == 'flowPoint') {
+      d.self.index = flowNode.individualStepIndex;
+      d.self.length = 0.8;
+    } else {
+      delete d.self.index;
+      delete d.self.length;
     };
-    dataPoint.d.index = barLengths[codeLineNumber]++;
-    dataPoint.d.length = 0.8;
-    return dataPoint;
+
+    d.full.index = flowNode.stepRange[0];
+    d.full.length = 0.8 + flowNode.stepRange[1] - flowNode.stepRange[0];
+
+    // update stats
+    if (d.full.index < stats.indexMin)
+      stats.indexMin = d.full.index;
+    if (stats.indexMax < d.full.index + d.full.length)
+      stats.indexMax = d.full.index + d.full.length;
   });
+
+  return stats;
+};
+
+
+var timeIndexed = Plotter.timeIndexed = function(flowNodes) {
+  var stats = {
+    indexMin: Infinity,
+    indexMax: -Infinity
+  };
+
+  _.each(flowNodes, function(flowNode) {
+    var d, timeRange;
+    d = flowNode.d;
+    d.self || (d.self = {});
+    d.full || (d.full = {});
+
+    timeRange = flowNode.individualTimeRange;
+    if (flowNode.type == 'flowPoint') {
+      d.self.index = timeRange[0];
+      d.self.length = timeRange[1] - timeRange[0];
+    } else {
+      delete d.self.index;
+      delete d.self.length;
+    };
+
+    d.full.index = flowNode.timeRange[0];
+    d.full.length = flowNode.timeRange[1] - flowNode.timeRange[0];
+
+    // update stats
+    if (d.full.index < stats.indexMin)
+      stats.indexMin = d.full.index;
+    if (stats.indexMax < d.full.index + d.full.length)
+      stats.indexMax = d.full.index + d.full.length;
+  });
+
+  return stats;
+};
+
+
+var stackedBarIndexed = Plotter.stackedBarIndexed = function(flowNodes) {
+  var stats, barLengths;
+  stats = {
+    indexMin: Infinity,
+    indexMax: -Infinity
+  };
+
+  barLengths = {};
+  _.each(flowNodes, function(flowNode) {
+    var d, id;
+    d = flowNode.d;
+    d.self || (d.self = {});
+    d.full || (d.full = {});
+
+    id = flowNode.type + flowNode.lineNumber;
+    barLengths[id] || (barLengths[id] = 0);
+
+    if (flowNode.type == 'flowPoint') {
+      d.self.index = barLengths[id];
+      d.self.length = 0.8;
+    } else {
+      delete d.self.index;
+      delete d.self.length;
+    };
+
+    d.full.index = barLengths[id];
+    d.full.length = 0.8;
+
+    barLengths[id]++;
+
+    // update stats
+    if (d.full.index < stats.indexMin)
+      stats.indexMin = d.full.index;
+    if (stats.indexMax < d.full.index + d.full.length)
+      stats.indexMax = d.full.index + d.full.length;
+  });
+
+  return stats;
 };
 
 

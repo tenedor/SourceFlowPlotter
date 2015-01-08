@@ -345,6 +345,11 @@ var PlotBody = views.PlotBody = PlotComponent.extend({
         this.layout.barSelectorsContainer,
         {eventHub: this.eventHub});
 
+    this.flowGroupBars = new views.FlowGroupBars(
+        this.selection.select('.flow-group-bars'),
+        this.layout.flowGroupBars,
+        {eventHub: this.eventHub});
+
     this.flowPointBars = new views.FlowPointBars(
         this.selection.select('.flow-point-bars'),
         this.layout.flowPointBars,
@@ -361,6 +366,7 @@ var PlotBody = views.PlotBody = PlotComponent.extend({
     PlotComponent.prototype.update.apply(this, arguments);
 
     this.barSelectorsContainer.update(data);
+    this.flowGroupBars.update(data);
     this.flowPointBars.update(data);
     this.codeLines.update(data);
   }
@@ -532,6 +538,102 @@ var CodeBarSelectors = views.CodeBarSelectors = PlotComponent.extend({
 });
 
 
+var FlowGroupBars = views.FlowGroupBars = PlotComponent.extend({
+
+  bindList: {
+    onMouseEnterFlowGroupBar: 'passFutureContext',
+    onMouseLeaveFlowGroupBar: 'passFutureContext'
+  },
+
+
+  update: function(data) {
+    PlotComponent.prototype.update.apply(this, arguments);
+
+    var flowGroupBar, layout, flowGroups, codeLinesDomain, codeLineHeightUnit,
+        indexDomain, indexWidthUnit;
+
+    layout = this.layout;
+    flowGroups = this.data.flowGroups;
+    codeLinesDomain = this.codeLinesDomain;
+    codeLineHeightUnit = this.codeLineHeightUnit;
+    indexDomain = this.indexDomain;
+    indexWidthUnit = this.indexWidthUnit;
+
+    flowGroupBar = this.selection.selectAll('rect.flow-group-bar')
+      .data(flowGroups, function(flowGroup){return flowGroup.id;});
+    flowGroupBar.enter().append('rect')
+      .classed('flow-group-bar', true)
+      .classed('flow-node-bar', true)
+      //.classed('has-side-effect', function(flowGroup){
+        //return !!flowGroup[SIDE_EFFECTS].length;})
+      .attr('data-code-line-number', function(flowGroup){
+        return flowGroup.lineNumber;})
+      .attr('x', function(flowGroup){
+        return (flowGroup.d.full.index - indexDomain[0]) * indexWidthUnit || 0;})
+      .attr('y', function(flowGroup){
+        return (flowGroup.lineNumber - codeLinesDomain[0]) * codeLineHeightUnit;})
+      .attr('width', function(flowGroup){
+        return flowGroup.d.full.length * indexWidthUnit || 1;})
+      .attr('height', function(flowGroup) {
+        var lineRange, lines;
+        lineRange = flowGroup.internalCodeLineRange;
+        lines = lineRange[1] - lineRange[0] + 1;
+        return codeLineHeightUnit * lines;})
+      .style('opacity', 0)
+      .on('mouseenter', this.onMouseEnterFlowGroupBar)
+      .on('mouseleave', this.onMouseLeaveFlowGroupBar);
+
+    this.updateContext();
+    codeLinesDomain = this.codeLinesDomain;
+    codeLineHeightUnit = this.codeLineHeightUnit;
+    indexDomain = this.indexDomain;
+    indexWidthUnit = this.indexWidthUnit;
+
+    flowGroupBar.transition().duration(700)
+      .attr('x', function(flowGroup){
+        return (flowGroup.d.full.index - indexDomain[0]) * indexWidthUnit || 0;})
+      .attr('y', function(flowGroup){
+        return (flowGroup.lineNumber - codeLinesDomain[0]) * codeLineHeightUnit;})
+      .attr('width', function(flowGroup){
+        return flowGroup.d.full.length * indexWidthUnit || 1;})
+      .attr('height', function(flowGroup) {
+        var lineRange, lines;
+        lineRange = flowGroup.internalCodeLineRange;
+        lines = lineRange[1] - lineRange[0] + 1;
+        return codeLineHeightUnit * lines;})
+      .style('opacity', 0.3);
+    flowGroupBar.exit().transition().duration(700)
+      .attr('x', function(flowGroup){
+        return (flowGroup.d.full.index - indexDomain[0]) * indexWidthUnit || 0;})
+      .attr('y', function(flowGroup){
+        return (flowGroup.lineNumber - codeLinesDomain[0]) * codeLineHeightUnit;})
+      .style('opacity', 0)
+      .remove();
+  },
+
+
+  onMouseEnterFlowGroupBar: function(target, flowGroup) {
+    var sideEffects;
+
+    this.eventHub.trigger('select:flowGroup', flowGroup);
+
+    /* TODO: reinstate side effects
+    sideEffects = flowGroup[SIDE_EFFECTS];
+    if (sideEffects) {
+      this.eventHub.trigger('show:sideEffects', sideEffects);
+    };
+    */
+  },
+
+
+  onMouseLeaveFlowGroupBar: function(target, flowGroup) {
+    this.eventHub.trigger('unselect:flowGroup', flowGroup);
+    this.eventHub.trigger('hide:sideEffects', null);
+  }
+
+});
+
+
 var FlowPointBars = views.FlowPointBars = PlotComponent.extend({
 
   bindList: {
@@ -557,16 +659,17 @@ var FlowPointBars = views.FlowPointBars = PlotComponent.extend({
       .data(flowPoints, function(flowPoint){return flowPoint.id;});
     flowPointBar.enter().append('rect')
       .classed('flow-point-bar', true)
+      .classed('flow-node-bar', true)
       //.classed('has-side-effect', function(flowPoint){
         //return !!flowPoint[SIDE_EFFECTS].length;})
       .attr('data-code-line-number', function(flowPoint){
         return flowPoint.lineNumber;})
       .attr('x', function(flowPoint){
-        return (flowPoint.d.index - indexDomain[0]) * indexWidthUnit || 0;})
+        return (flowPoint.d.self.index - indexDomain[0]) * indexWidthUnit || 0;})
       .attr('y', function(flowPoint){
         return (flowPoint.lineNumber - codeLinesDomain[0]) * codeLineHeightUnit;})
       .attr('width', function(flowPoint){
-        return flowPoint.d.length * indexWidthUnit || 1;})
+        return flowPoint.d.self.length * indexWidthUnit || 1;})
       .attr('height', codeLineHeightUnit)
       .style('opacity', 0)
       .on('mouseenter', this.onMouseEnterFlowPointBar)
@@ -580,16 +683,16 @@ var FlowPointBars = views.FlowPointBars = PlotComponent.extend({
 
     flowPointBar.transition().duration(700)
       .attr('x', function(flowPoint){
-        return (flowPoint.d.index - indexDomain[0]) * indexWidthUnit || 0;})
+        return (flowPoint.d.self.index - indexDomain[0]) * indexWidthUnit || 0;})
       .attr('y', function(flowPoint){
         return (flowPoint.lineNumber - codeLinesDomain[0]) * codeLineHeightUnit;})
       .attr('width', function(flowPoint){
-        return flowPoint.d.length * indexWidthUnit || 1;})
+        return flowPoint.d.self.length * indexWidthUnit || 1;})
       .attr('height', codeLineHeightUnit)
       .style('opacity', 1);
     flowPointBar.exit().transition().duration(700)
       .attr('x', function(flowPoint){
-        return (flowPoint.d.index - indexDomain[0]) * indexWidthUnit || 0;})
+        return (flowPoint.d.self.index - indexDomain[0]) * indexWidthUnit || 0;})
       .attr('y', function(flowPoint){
         return (flowPoint.lineNumber - codeLinesDomain[0]) * codeLineHeightUnit;})
       .style('opacity', 0)
