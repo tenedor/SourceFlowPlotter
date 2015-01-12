@@ -121,28 +121,32 @@ var Plot = views.Plot = PlotComponent.extend({
 
 
   selectCodeLineNumber: function(codeLineNumber) {
-    var codeLineSelector = '[data-code-line-number="' + codeLineNumber + '"]';
+    var codeLineSelector = '[data-code-line-number="' + codeLineNumber + '"]' +
+        '[data-element-scope="plot"]';
     this.selection.selectAll(codeLineSelector)
       .classed('selected', true);
   },
 
 
   unselectCodeLineNumber: function(codeLineNumber) {
-    var codeLineSelector = '[data-code-line-number="' + codeLineNumber + '"]';
+    var codeLineSelector = '[data-code-line-number="' + codeLineNumber + '"]' +
+        '[data-element-scope="plot"]';
     this.selection.selectAll(codeLineSelector)
       .classed('selected', false);
   },
 
 
   selectIndexNumber: function(indexNumber) {
-    var indexSelector = '[data-index-number="' + indexNumber + '"]';
+    var indexSelector = '[data-index-number="' + indexNumber + '"]' +
+        '[data-element-scope="plot"]';
     this.selection.selectAll(indexSelector)
       .classed('selected', true);
   },
 
 
   unselectIndexNumber: function(indexNumber) {
-    var indexSelector = '[data-index-number="' + indexNumber + '"]';
+    var indexSelector = '[data-index-number="' + indexNumber + '"]' +
+        '[data-element-scope="plot"]';
     this.selection.selectAll(indexSelector)
       .classed('selected', false);
   }
@@ -227,6 +231,7 @@ var IndexNumbers = views.IndexNumbers = PlotComponent.extend({
       .attr('text-anchor', 'middle')
       .attr('alignment-baseline', 'middle')
       .attr('data-index-number', function(indexValue){return indexValue;})
+      .attr('data-element-scope', 'plot')
       .attr('x', function(indexValue){
         return (indexValue - indexDomain[0]) * indexWidthUnit || 0;})
       .attr('y', 0)
@@ -312,6 +317,7 @@ var CodeLineNumbers = views.CodeLineNumbers = PlotComponent.extend({
       .attr('text-anchor', 'end')
       .attr('alignment-baseline', 'middle')
       .attr('data-code-line-number', function(lineNumber){return lineNumber;})
+      .attr('data-element-scope', 'plot')
       .attr('x', 0)
       .attr('y', function(lineNumber){
         return (lineNumber - codeLinesDomain[0] + 0.5) * codeLineHeightUnit;})
@@ -393,6 +399,7 @@ var CodeLines = views.CodeLines = PlotComponent.extend({
     enteredCodeLine = codeLine.enter().append('tspan')
       .classed('code-line', true)
       .attr('data-code-line-number', function(lineNumber){return lineNumber;})
+      .attr('data-element-scope', 'plot')
       .attr('x', 0)
       .attr('y', function(lineNumber){
         return (lineNumber - codeLinesDomain[0] + 0.5) * codeLineHeightUnit;})
@@ -477,6 +484,7 @@ var IndexBarSelectors = views.IndexBarSelectors = PlotComponent.extend({
       .classed('index-bar-selector', true)
       .classed('bar-selector', true)
       .attr('data-index-number', function(indexValue){return indexValue;})
+      .attr('data-element-scope', 'plot')
       .attr('x', function(indexValue){
         return (indexValue - indexDomain[0]) * indexWidthUnit || 0;})
       .attr('y', 0)
@@ -512,6 +520,7 @@ var CodeBarSelectors = views.CodeBarSelectors = PlotComponent.extend({
       .classed('code-bar-selector', true)
       .classed('bar-selector', true)
       .attr('data-code-line-number', function(lineNumber){return lineNumber;})
+      .attr('data-element-scope', 'plot')
       .attr('x', 0)
       .attr('y', function(lineNumber){
         return (lineNumber - codeLinesDomain[0]) * codeLineHeightUnit;})
@@ -568,6 +577,7 @@ var FlowGroupBars = views.FlowGroupBars = PlotComponent.extend({
       .attr('data-code-line-range', function(flowGroup){
         var lineRange = flowGroup.internalCodeLineRange;
         return lineRange[0] + ',' + lineRange[1];})
+      .attr('data-element-scope', 'flow-group-bar')
       .on('mouseenter', this.onMouseEnterFlowGroupBar)
       .on('mouseleave', this.onMouseLeaveFlowGroupBar);
 
@@ -582,6 +592,7 @@ var FlowGroupBars = views.FlowGroupBars = PlotComponent.extend({
       .attr('data-code-line-range', function(flowGroup){
         var lineRange = flowGroup.internalCodeLineRange;
         return lineRange[0] + ',' + lineRange[1];})
+      .attr('data-element-scope', 'flow-group-bar')
       .attr('x', function(flowGroup){
         return (flowGroup.d.full.index - indexDomain[0]) * indexWidthUnit || 0;})
       .attr('y', function(flowGroup){
@@ -604,6 +615,7 @@ var FlowGroupBars = views.FlowGroupBars = PlotComponent.extend({
       .classed('bar-selector', true)
       .attr('data-code-line-number', function(codeBar){
         return codeBar.lineNumber;})
+      .attr('data-element-scope', 'flow-group-bar')
       .attr('x', function(codeBar){
         var index = codeBar.flowGroup.d.full.index;
         return (index - indexDomain[0]) * indexWidthUnit || 0;})
@@ -738,6 +750,7 @@ var FlowPointBars = views.FlowPointBars = PlotComponent.extend({
       .attr('data-code-line-range', function(flowPoint){
         var lineRange = flowPoint.internalCodeLineRange;
         return lineRange[0] + ',' + lineRange[1];})
+      .attr('data-element-scope', 'flow-point-bar')
       .on('mouseenter', this.onMouseEnterFlowPointBar)
       .on('mouseleave', this.onMouseLeaveFlowPointBar);
 
@@ -752,6 +765,7 @@ var FlowPointBars = views.FlowPointBars = PlotComponent.extend({
         //return !!flowPoint[SIDE_EFFECTS].length;})
       .attr('data-code-line-number', function(flowPoint){
         return flowPoint.lineNumber;})
+      .attr('data-element-scope', 'flow-point-bar')
       .attr('x', function(flowPoint){
         return (flowPoint.d.full.index - indexDomain[0]) * indexWidthUnit || 0;})
       .attr('y', function(flowPoint){
@@ -772,6 +786,7 @@ var FlowPointBars = views.FlowPointBars = PlotComponent.extend({
         //return !!flowPoint[SIDE_EFFECTS].length;})
       .attr('data-code-line-number', function(flowPoint){
         return flowPoint.lineNumber;})
+      .attr('data-element-scope', 'flow-point-bar')
       .attr('x', function(flowPoint){
         return (flowPoint.d.self.index - indexDomain[0]) * indexWidthUnit || 0;})
       .attr('y', function(flowPoint){
