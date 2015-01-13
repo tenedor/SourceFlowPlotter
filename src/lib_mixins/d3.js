@@ -76,4 +76,37 @@ _.each({
   };
 });
 
+
+// ** d3.selection.prototype.union **
+// -------------------------------------
+//
+// Return a union of the current selection and one or more other selections
+//
+// Adapted from aogriffiths via https://github.com/mbostock/d3/issues/399.
+
+// error if we are overwriting a pre-defined function
+if (d3.selection.prototype.union)
+  throw new Error('d3.selection.prototype.union is already defined');
+
+// d3.selection.prototype.union
+d3.selection.prototype.union = function() {
+  var newSelection, i, oldSelection;
+
+  // ensure the correct prototype and empty the selection
+  newSelection = d3.select(null);
+  newSelection.splice(0,1);
+
+  // push in each selection without loosing the prototype
+  [].push.apply(newSelection, this);
+  for (var i = 0; i < arguments.length; i++) {
+    oldSelection = arguments[i];
+    if (oldSelection instanceof d3.selection)
+      [].push.apply(newSelection, oldSelection);
+    else
+      throw new Error("Can only union with another d3 selection");
+  };
+
+  return newSelection;
+};
+
 }).call(this);
