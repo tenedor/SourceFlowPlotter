@@ -236,6 +236,12 @@ _.extend(Plotter.prototype, Backbone.Events, {
       d3.select('.plot-body').classed('hide-groups',
         !d3.select('.plot-body').classed('hide-groups'));});
 
+    // listen for flow point tail display changes
+    this.tailsToggleButton = d3.select('button.tails-toggle');
+    this.tailsToggleButton.on('click', function(){
+      d3.select('.plot-body').classed('hide-tails',
+        !d3.select('.plot-body').classed('hide-tails'));});
+
     // listen for filter updates
     this.filterInputField.on('keyup', function() {
       var filter;

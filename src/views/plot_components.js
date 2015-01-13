@@ -717,8 +717,9 @@ var FlowPointBars = views.FlowPointBars = PlotComponent.extend({
   update: function(data) {
     PlotComponent.prototype.update.apply(this, arguments);
 
-    var flowPointBar, layout, flowPoints, codeLinesDomain, codeLineHeightUnit,
-        indexDomain, indexWidthUnit;
+    var flowPointBarGroup, flowPointBar, flowPointTailBar, layout, flowPoints,
+        codeLinesDomain, codeLineHeightUnit, indexDomain, indexWidthUnit,
+        exitingGroups;
 
     layout = this.layout;
     flowPoints = this.data.flowPoints;
@@ -727,14 +728,48 @@ var FlowPointBars = views.FlowPointBars = PlotComponent.extend({
     indexDomain = this.indexDomain;
     indexWidthUnit = this.indexWidthUnit;
 
-    flowPointBar = this.selection.selectAll('rect.flow-point-bar')
+    // enter flow point bar groups
+    flowPointBarGroup = this.selection.selectAll('g.flow-point-bar-group')
       .data(flowPoints, function(flowPoint){return flowPoint.id;});
+    flowPointBarGroup.enter().append('g')
+      .classed('flow-point-bar-group', true)
+      .classed('flow-node-bar-group', true)
+      .attr('data-uid', function(flowPoint){return flowPoint.uid;})
+      .attr('data-code-line-range', function(flowPoint){
+        var lineRange = flowPoint.internalCodeLineRange;
+        return lineRange[0] + ',' + lineRange[1];})
+      .on('mouseenter', this.onMouseEnterFlowPointBar)
+      .on('mouseleave', this.onMouseLeaveFlowPointBar);
+
+    // enter flow point tail bars
+    flowPointTailBar = flowPointBarGroup.selectAll('rect.flow-point-tail-bar')
+      .data(function(fp){return [fp];}, function(flowPoint){
+        return flowPoint.id;});
+    flowPointTailBar.enter().append('rect')
+      .classed('flow-point-tail-bar', true)
+      .classed('flow-node-bar', true)
+      //.classed('has-side-effect', function(flowPoint){
+        //return !!flowPoint[SIDE_EFFECTS].length;})
+      .attr('data-code-line-number', function(flowPoint){
+        return flowPoint.lineNumber;})
+      .attr('x', function(flowPoint){
+        return (flowPoint.d.full.index - indexDomain[0]) * indexWidthUnit || 0;})
+      .attr('y', function(flowPoint){
+        return (flowPoint.lineNumber - codeLinesDomain[0]) * codeLineHeightUnit;})
+      .attr('width', function(flowPoint){
+        return flowPoint.d.full.length * indexWidthUnit || 1;})
+      .attr('height', codeLineHeightUnit)
+      .style('opacity', 0);
+
+    // enter flow point bars
+    flowPointBar = flowPointBarGroup.selectAll('rect.flow-point-bar')
+      .data(function(fp){return [fp];}, function(flowPoint){
+        return flowPoint.id;});
     flowPointBar.enter().append('rect')
       .classed('flow-point-bar', true)
       .classed('flow-node-bar', true)
       //.classed('has-side-effect', function(flowPoint){
         //return !!flowPoint[SIDE_EFFECTS].length;})
-      .attr('data-uid', function(flowPoint){return flowPoint.uid;})
       .attr('data-code-line-number', function(flowPoint){
         return flowPoint.lineNumber;})
       .attr('x', function(flowPoint){
@@ -744,9 +779,7 @@ var FlowPointBars = views.FlowPointBars = PlotComponent.extend({
       .attr('width', function(flowPoint){
         return flowPoint.d.self.length * indexWidthUnit || 1;})
       .attr('height', codeLineHeightUnit)
-      .style('opacity', 0)
-      .on('mouseenter', this.onMouseEnterFlowPointBar)
-      .on('mouseleave', this.onMouseLeaveFlowPointBar);
+      .style('opacity', 0);
 
     this.updateContext();
     codeLinesDomain = this.codeLinesDomain;
@@ -754,6 +787,29 @@ var FlowPointBars = views.FlowPointBars = PlotComponent.extend({
     indexDomain = this.indexDomain;
     indexWidthUnit = this.indexWidthUnit;
 
+    exitingGroups = flowPointBarGroup.exit();
+
+    // transition and exit flow point tail bars
+    flowPointTailBar.transition().duration(700)
+      .attr('x', function(flowPoint){
+        return (flowPoint.d.full.index - indexDomain[0]) * indexWidthUnit || 0;})
+      .attr('y', function(flowPoint){
+        return (flowPoint.lineNumber - codeLinesDomain[0]) * codeLineHeightUnit;})
+      .attr('width', function(flowPoint){
+        return flowPoint.d.full.length * indexWidthUnit || 1;})
+      .attr('height', codeLineHeightUnit)
+      .style('opacity', 0.3);
+    flowPointTailBar.exit()
+        .union(exitingGroups.selectAll('rect.flow-point-tail-bar'))
+        .transition().duration(700)
+      .attr('x', function(flowPoint){
+        return (flowPoint.d.full.index - indexDomain[0]) * indexWidthUnit || 0;})
+      .attr('y', function(flowPoint){
+        return (flowPoint.lineNumber - codeLinesDomain[0]) * codeLineHeightUnit;})
+      .style('opacity', 0)
+      .remove();
+
+    // transition and exit flow point bars
     flowPointBar.transition().duration(700)
       .attr('x', function(flowPoint){
         return (flowPoint.d.self.index - indexDomain[0]) * indexWidthUnit || 0;})
@@ -763,12 +819,18 @@ var FlowPointBars = views.FlowPointBars = PlotComponent.extend({
         return flowPoint.d.self.length * indexWidthUnit || 1;})
       .attr('height', codeLineHeightUnit)
       .style('opacity', 1);
-    flowPointBar.exit().transition().duration(700)
+    flowPointBar.exit()
+        .union(exitingGroups.selectAll('rect.flow-point-bar'))
+        .transition().duration(700)
       .attr('x', function(flowPoint){
         return (flowPoint.d.self.index - indexDomain[0]) * indexWidthUnit || 0;})
       .attr('y', function(flowPoint){
         return (flowPoint.lineNumber - codeLinesDomain[0]) * codeLineHeightUnit;})
       .style('opacity', 0)
+      .remove();
+
+    // exit flow point bar group
+    flowPointBarGroup.exit().transition().duration(700)
       .remove();
   },
 

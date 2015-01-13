@@ -110,7 +110,7 @@ svg {
   opacity: 0.2;
 }
 
-.plot-body > .flow-node-bars .flow-node-bar {
+.plot-body > .flow-node-bars > .flow-node-bar-group > .flow-node-bar {
   fill: #5bc0de;
 }
 
@@ -124,6 +124,11 @@ svg {
 
 .plot-body.hide-groups > .flow-group-bars {
   opacity: 0;
+}
+
+.plot-body.hide-tails > .flow-point-bars > .flow-point-bar-group >
+    .flow-point-tail-bar {
+  opacity: 0 !important; /* !important is needed to override in-DOM styling */
 }
 
 .code-text > tspan.code-text-line.selected {
