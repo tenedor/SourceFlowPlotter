@@ -211,9 +211,8 @@ var IndexNumbers = views.IndexNumbers = PlotComponent.extend({
   update: function(data) {
     PlotComponent.prototype.update.apply(this, arguments);
 
-    var layout, indexDomain, indexWidthUnit, indexNumberValues;
+    var indexDomain, indexWidthUnit, indexNumberValues;
 
-    layout = this.layout;
     indexDomain = this.indexDomain;
     indexWidthUnit = this.indexWidthUnit;
 
@@ -298,9 +297,8 @@ var CodeLineNumbers = views.CodeLineNumbers = PlotComponent.extend({
   update: function(data) {
     PlotComponent.prototype.update.apply(this, arguments);
 
-    var layout, codeLinesDomain, codeLineHeightUnit, codeLineNumbers;
+    var codeLinesDomain, codeLineHeightUnit, codeLineNumbers;
 
-    layout = this.layout;
     codeLinesDomain = this.codeLinesDomain;
     codeLineHeightUnit = this.codeLineHeightUnit;
 
@@ -383,10 +381,8 @@ var CodeLines = views.CodeLines = PlotComponent.extend({
   update: function(data) {
     PlotComponent.prototype.update.apply(this, arguments);
 
-    var layout, codeLinesDomain, codeLineHeightUnit, sourceCode,
-        codeLineNumbers;
+    var codeLinesDomain, codeLineHeightUnit, sourceCode, codeLineNumbers;
 
-    layout = this.layout;
     codeLinesDomain = this.codeLinesDomain;
     codeLineHeightUnit = this.codeLineHeightUnit;
     sourceCode = this.data.sourceCode;
@@ -469,9 +465,8 @@ var IndexBarSelectors = views.IndexBarSelectors = PlotComponent.extend({
   update: function(data) {
     PlotComponent.prototype.update.apply(this, arguments);
 
-    var layout, indexDomain, indexWidthUnit, indexNumberValues;
+    var indexDomain, indexWidthUnit, indexNumberValues;
 
-    layout = this.layout;
     indexDomain = this.indexDomain;
     indexWidthUnit = this.indexWidthUnit;
 
@@ -507,9 +502,8 @@ var CodeBarSelectors = views.CodeBarSelectors = PlotComponent.extend({
   update: function(data) {
     PlotComponent.prototype.update.apply(this, arguments);
 
-    var layout, codeLinesDomain, codeLineHeightUnit, codeLineNumbers;
+    var codeLinesDomain, codeLineHeightUnit, codeLineNumbers;
 
-    layout = this.layout;
     codeLinesDomain = this.codeLinesDomain;
     codeLineHeightUnit = this.codeLineHeightUnit;
 
@@ -557,10 +551,9 @@ var FlowGroupBars = views.FlowGroupBars = PlotComponent.extend({
   update: function(data) {
     PlotComponent.prototype.update.apply(this, arguments);
 
-    var layout, codeLinesDomain, codeLineHeightUnit, indexDomain,
-        indexWidthUnit, flowGroups;
+    var codeLinesDomain, codeLineHeightUnit, indexDomain, indexWidthUnit,
+        flowGroups;
 
-    layout = this.layout;
     codeLinesDomain = this.codeLinesDomain;
     codeLineHeightUnit = this.codeLineHeightUnit;
     indexDomain = this.indexDomain;
@@ -700,12 +693,10 @@ var FlowGroupBars = views.FlowGroupBars = PlotComponent.extend({
 
 
   onMouseEnterFlowGroupBar: function(target, flowGroup) {
-    var sideEffects;
-
     this.eventHub.trigger('select:flowGroup', flowGroup);
 
     /* TODO: reinstate side effects
-    sideEffects = flowGroup[SIDE_EFFECTS];
+    var sideEffects = flowGroup[SIDE_EFFECTS];
     if (sideEffects) {
       this.eventHub.trigger('show:sideEffects', sideEffects);
     };
@@ -732,10 +723,9 @@ var FlowPointBars = views.FlowPointBars = PlotComponent.extend({
   update: function(data) {
     PlotComponent.prototype.update.apply(this, arguments);
 
-    var layout, codeLinesDomain, codeLineHeightUnit, indexDomain,
-        indexWidthUnit, flowPoints;
+    var codeLinesDomain, codeLineHeightUnit, indexDomain, indexWidthUnit,
+        flowPoints;
 
-    layout = this.layout;
     codeLinesDomain = this.codeLinesDomain;
     codeLineHeightUnit = this.codeLineHeightUnit;
     indexDomain = this.indexDomain;
@@ -856,12 +846,10 @@ var FlowPointBars = views.FlowPointBars = PlotComponent.extend({
 
 
   onMouseEnterFlowPointBar: function(target, flowPoint) {
-    var sideEffects;
-
     this.eventHub.trigger('select:flowPoint', flowPoint);
 
     /* TODO: reinstate side effects
-    sideEffects = flowPoint[SIDE_EFFECTS];
+    var sideEffects = flowPoint[SIDE_EFFECTS];
     if (sideEffects) {
       this.eventHub.trigger('show:sideEffects', sideEffects);
     };
