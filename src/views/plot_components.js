@@ -11,7 +11,7 @@ var PlotComponent = views.PlotComponent = View.extend({
     var cld, id, indexWidthUnit;
 
     // height of one code line (code line domain is an inclusive range, so add 1
-    // in span calculation account for flow point size)
+    // in span calculation to account for flow point size)
     cld = this.codeLinesDomain = this.data.codeLinesDomain;
     this.codeLineHeightUnit = this.layout.height / (cld[1] - cld[0] + 1);
 
