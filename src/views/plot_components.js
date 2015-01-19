@@ -3,9 +3,10 @@
 var util = sfp.util;
 var views = sfp.views;
 var View = views.View;
+var ContextView = views.ContextView;
 
 
-var PlotComponent = views.PlotComponent = View.extend({
+var PlotContextView = views.PlotContextView = ContextView.extend({
 
   updateContext: function() {
     var cld, id, indexWidthUnit;
@@ -25,7 +26,7 @@ var PlotComponent = views.PlotComponent = View.extend({
 });
 
 
-var Plot = views.Plot = PlotComponent.extend({
+var Plot = views.Plot = View.extend({
 
   // TODO: what do we do about the challenge of using the paradigm
   // `_.extend({}, super.prototype.bindList, {...})` here?
@@ -42,7 +43,7 @@ var Plot = views.Plot = PlotComponent.extend({
 
 
   initialize: function() {
-    PlotComponent.prototype.initialize.apply(this, arguments);
+    View.prototype.initialize.apply(this, arguments);
 
     this.eventHub.on('select:codeLineNumber', this.selectCodeLineNumber);
     this.eventHub.on('unselect:codeLineNumber', this.unselectCodeLineNumber);
@@ -79,7 +80,7 @@ var Plot = views.Plot = PlotComponent.extend({
 
 
   update: function(data) {
-    PlotComponent.prototype.update.apply(this, arguments);
+    View.prototype.update.apply(this, arguments);
 
     this.indexAxis.update(data);
     this.codeLineAxis.update(data);
@@ -154,10 +155,10 @@ var Plot = views.Plot = PlotComponent.extend({
 });
 
 
-var IndexAxis = views.IndexAxis = PlotComponent.extend({
+var IndexAxis = views.IndexAxis = View.extend({
 
   initialize: function() {
-    PlotComponent.prototype.initialize.apply(this, arguments);
+    View.prototype.initialize.apply(this, arguments);
 
     // index axis
     this.selection.append('rect')
@@ -180,7 +181,7 @@ var IndexAxis = views.IndexAxis = PlotComponent.extend({
 
 
   update: function(data) {
-    PlotComponent.prototype.update.apply(this, arguments);
+    View.prototype.update.apply(this, arguments);
 
     var indexAxisLabelText = this.data.index.axisLabel;
 
@@ -206,10 +207,10 @@ var IndexAxis = views.IndexAxis = PlotComponent.extend({
 });
 
 
-var IndexNumbers = views.IndexNumbers = PlotComponent.extend({
+var IndexNumbers = views.IndexNumbers = PlotContextView.extend({
 
-  update: function(data) {
-    PlotComponent.prototype.update.apply(this, arguments);
+  immediateUpdate: function(data) {
+    PlotContextView.prototype.immediateUpdate.apply(this, arguments);
 
     var indexDomain, indexWidthUnit, indexNumberValues;
 
@@ -234,9 +235,14 @@ var IndexNumbers = views.IndexNumbers = PlotComponent.extend({
         return (indexValue - indexDomain[0]) * indexWidthUnit || 0;})
       .attr('y', 0)
       .style('opacity', 0);
+  },
 
-    // update axis descriptors to transition to the correct location
-    this.updateContext();
+
+  transitionUpdate: function() {
+    PlotContextView.prototype.transitionUpdate.apply(this, arguments);
+
+    var indexDomain, indexWidthUnit;
+
     indexDomain = this.indexDomain;
     indexWidthUnit = this.indexWidthUnit;
 
@@ -254,10 +260,10 @@ var IndexNumbers = views.IndexNumbers = PlotComponent.extend({
 });
 
 
-var CodeLineAxis = views.CodeLineAxis = PlotComponent.extend({
+var CodeLineAxis = views.CodeLineAxis = View.extend({
 
   initialize: function() {
-    PlotComponent.prototype.initialize.apply(this, arguments);
+    View.prototype.initialize.apply(this, arguments);
 
     this.selection.append('rect')
       .classed('axis-bar', true)
@@ -284,7 +290,7 @@ var CodeLineAxis = views.CodeLineAxis = PlotComponent.extend({
 
 
   update: function(data) {
-    PlotComponent.prototype.update.apply(this, arguments);
+    View.prototype.update.apply(this, arguments);
 
     this.codeLineNumbers.update(data);
   }
@@ -292,10 +298,10 @@ var CodeLineAxis = views.CodeLineAxis = PlotComponent.extend({
 });
 
 
-var CodeLineNumbers = views.CodeLineNumbers = PlotComponent.extend({
+var CodeLineNumbers = views.CodeLineNumbers = PlotContextView.extend({
 
-  update: function(data) {
-    PlotComponent.prototype.update.apply(this, arguments);
+  immediateUpdate: function(data) {
+    PlotContextView.prototype.immediateUpdate.apply(this, arguments);
 
     var codeLinesDomain, codeLineHeightUnit, codeLineNumbers;
 
@@ -318,8 +324,14 @@ var CodeLineNumbers = views.CodeLineNumbers = PlotComponent.extend({
       .attr('y', function(lineNumber){
         return (lineNumber - codeLinesDomain[0] + 0.5) * codeLineHeightUnit;})
       .style('opacity', 0);
+  },
 
-    this.updateContext();
+
+  transitionUpdate: function() {
+    PlotContextView.prototype.transitionUpdate.apply(this, arguments);
+
+    var codeLinesDomain, codeLineHeightUnit;
+
     codeLinesDomain = this.codeLinesDomain;
     codeLineHeightUnit = this.codeLineHeightUnit;
 
@@ -337,10 +349,10 @@ var CodeLineNumbers = views.CodeLineNumbers = PlotComponent.extend({
 });
 
 
-var PlotBody = views.PlotBody = PlotComponent.extend({
+var PlotBody = views.PlotBody = View.extend({
 
   initialize: function() {
-    PlotComponent.prototype.initialize.apply(this, arguments);
+    View.prototype.initialize.apply(this, arguments);
 
     this.barSelectorsContainer = new views.BarSelectorsContainer(
         this.selection.select('.bar-selectors-container'),
@@ -365,7 +377,7 @@ var PlotBody = views.PlotBody = PlotComponent.extend({
 
 
   update: function(data) {
-    PlotComponent.prototype.update.apply(this, arguments);
+    View.prototype.update.apply(this, arguments);
 
     this.barSelectorsContainer.update(data);
     this.flowGroupBars.update(data);
@@ -376,10 +388,10 @@ var PlotBody = views.PlotBody = PlotComponent.extend({
 });
 
 
-var CodeLines = views.CodeLines = PlotComponent.extend({
+var CodeLines = views.CodeLines = PlotContextView.extend({
 
-  update: function(data) {
-    PlotComponent.prototype.update.apply(this, arguments);
+  immediateUpdate: function(data) {
+    PlotContextView.prototype.immediateUpdate.apply(this, arguments);
 
     var codeLinesDomain, codeLineHeightUnit, sourceCode, codeLineNumbers;
 
@@ -413,8 +425,14 @@ var CodeLines = views.CodeLines = PlotComponent.extend({
       .text(function(lineNumber){
         return (sourceCode[lineNumber].codeText || '').trimLeft();})
       .attr('alignment-baseline', 'middle');
+  },
 
-    this.updateContext();
+
+  transitionUpdate: function() {
+    PlotContextView.prototype.transitionUpdate.apply(this, arguments);
+
+    var codeLinesDomain, codeLineHeightUnit;
+
     codeLinesDomain = this.codeLinesDomain;
     codeLineHeightUnit = this.codeLineHeightUnit;
 
@@ -432,10 +450,10 @@ var CodeLines = views.CodeLines = PlotComponent.extend({
 });
 
 
-var BarSelectorsContainer = views.BarSelectorsContainer = PlotComponent.extend({
+var BarSelectorsContainer = views.BarSelectorsContainer = View.extend({
 
   initialize: function() {
-    PlotComponent.prototype.initialize.apply(this, arguments);
+    View.prototype.initialize.apply(this, arguments);
 
     this.indexBarSelectors = new views.IndexBarSelectors(
         this.selection.select('.index-bar-selectors'),
@@ -450,7 +468,7 @@ var BarSelectorsContainer = views.BarSelectorsContainer = PlotComponent.extend({
 
 
   update: function(data) {
-    PlotComponent.prototype.update.apply(this, arguments);
+    View.prototype.update.apply(this, arguments);
 
     this.indexBarSelectors.update(data);
     this.codeBarSelectors.update(data);
@@ -460,10 +478,10 @@ var BarSelectorsContainer = views.BarSelectorsContainer = PlotComponent.extend({
 
 
 // TODO: incorporate index bar selectors into the application
-var IndexBarSelectors = views.IndexBarSelectors = PlotComponent.extend({
+var IndexBarSelectors = views.IndexBarSelectors = PlotContextView.extend({
 
-  update: function(data) {
-    PlotComponent.prototype.update.apply(this, arguments);
+  immediateUpdate: function(data) {
+    PlotContextView.prototype.immediateUpdate.apply(this, arguments);
 
     var indexDomain, indexWidthUnit, indexNumberValues;
 
@@ -485,8 +503,14 @@ var IndexBarSelectors = views.IndexBarSelectors = PlotComponent.extend({
       .attr('y', 0)
       .attr('width', this.layout.width / indexNumberValues.length)
       .attr('height', this.layout.height);
+  },
 
-    this.updateContext();
+
+  transitionUpdate: function() {
+    PlotContextView.prototype.transitionUpdate.apply(this, arguments);
+
+    var indexDomain, indexWidthUnit;
+
     indexDomain = this.indexDomain;
     indexWidthUnit = this.indexWidthUnit;
 
@@ -497,10 +521,10 @@ var IndexBarSelectors = views.IndexBarSelectors = PlotComponent.extend({
 });
 
 
-var CodeBarSelectors = views.CodeBarSelectors = PlotComponent.extend({
+var CodeBarSelectors = views.CodeBarSelectors = PlotContextView.extend({
 
-  update: function(data) {
-    PlotComponent.prototype.update.apply(this, arguments);
+  immediateUpdate: function(data) {
+    PlotContextView.prototype.immediateUpdate.apply(this, arguments);
 
     var codeLinesDomain, codeLineHeightUnit, codeLineNumbers;
 
@@ -521,8 +545,14 @@ var CodeBarSelectors = views.CodeBarSelectors = PlotComponent.extend({
         return (lineNumber - codeLinesDomain[0]) * codeLineHeightUnit;})
       .attr('width', this.layout.width)
       .attr('height', codeLineHeightUnit);
+  },
 
-    this.updateContext();
+
+  transitionUpdate: function() {
+    PlotContextView.prototype.transitionUpdate.apply(this, arguments);
+
+    var codeLinesDomain, codeLineHeightUnit;
+
     codeLinesDomain = this.codeLinesDomain;
     codeLineHeightUnit = this.codeLineHeightUnit;
 
@@ -540,7 +570,7 @@ var CodeBarSelectors = views.CodeBarSelectors = PlotComponent.extend({
 });
 
 
-var FlowGroupBars = views.FlowGroupBars = PlotComponent.extend({
+var FlowGroupBars = views.FlowGroupBars = PlotContextView.extend({
 
   bindList: {
     onMouseEnterFlowGroupBar: 'passFutureContext',
@@ -548,8 +578,8 @@ var FlowGroupBars = views.FlowGroupBars = PlotComponent.extend({
   },
 
 
-  update: function(data) {
-    PlotComponent.prototype.update.apply(this, arguments);
+  immediateUpdate: function(data) {
+    PlotContextView.prototype.immediateUpdate.apply(this, arguments);
 
     var codeLinesDomain, codeLineHeightUnit, indexDomain, indexWidthUnit,
         flowGroups;
@@ -620,8 +650,14 @@ var FlowGroupBars = views.FlowGroupBars = PlotComponent.extend({
       .attr('width', function(codeBar){
         return codeBar.flowGroup.d.full.length * indexWidthUnit || 1;})
       .attr('height', codeLineHeightUnit);
+  },
 
-    this.updateContext();
+
+  transitionUpdate: function() {
+    PlotContextView.prototype.transitionUpdate.apply(this, arguments);
+
+    var codeLinesDomain, codeLineHeightUnit, indexDomain, indexWidthUnit;
+
     codeLinesDomain = this.codeLinesDomain;
     codeLineHeightUnit = this.codeLineHeightUnit;
     indexDomain = this.indexDomain;
@@ -712,7 +748,7 @@ var FlowGroupBars = views.FlowGroupBars = PlotComponent.extend({
 });
 
 
-var FlowPointBars = views.FlowPointBars = PlotComponent.extend({
+var FlowPointBars = views.FlowPointBars = PlotContextView.extend({
 
   bindList: {
     onMouseEnterFlowPointBar: 'passFutureContext',
@@ -720,8 +756,8 @@ var FlowPointBars = views.FlowPointBars = PlotComponent.extend({
   },
 
 
-  update: function(data) {
-    PlotComponent.prototype.update.apply(this, arguments);
+  immediateUpdate: function(data) {
+    PlotContextView.prototype.immediateUpdate.apply(this, arguments);
 
     var codeLinesDomain, codeLineHeightUnit, indexDomain, indexWidthUnit,
         flowPoints;
@@ -790,8 +826,14 @@ var FlowPointBars = views.FlowPointBars = PlotComponent.extend({
         return flowPoint.d.self.length * indexWidthUnit || 1;})
       .attr('height', codeLineHeightUnit)
       .style('opacity', 0);
+  },
 
-    this.updateContext();
+
+  transitionUpdate: function() {
+    PlotContextView.prototype.transitionUpdate.apply(this, arguments);
+
+    var codeLinesDomain, codeLineHeightUnit, indexDomain, indexWidthUnit;
+
     codeLinesDomain = this.codeLinesDomain;
     codeLineHeightUnit = this.codeLineHeightUnit;
     indexDomain = this.indexDomain;

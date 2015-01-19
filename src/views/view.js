@@ -43,9 +43,7 @@ _.extend(View.prototype, Backbone.Events, {
   },
 
 
-  render: function() {
-    this.updateContext();
-  },
+  render: function() {},
 
 
   update: function(data) {
@@ -59,9 +57,6 @@ _.extend(View.prototype, Backbone.Events, {
       this.render();
     };
   },
-
-
-  updateContext: function(){}
 
 });
 
