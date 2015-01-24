@@ -389,6 +389,9 @@ def add_parent_references(root):
           child['parent'] = node
 
 
+# add source_files/ directory to front of sys.path
+sys.path.insert(0, sys.path[0] + '/source_files')
+
 print '\n >>> enter trace \n'
 
 import trace_script
@@ -422,7 +425,7 @@ source_files = trace_script.source_files()
 source_code = {}
 for source_file in source_files:
   code_lines = []
-  with open(source_file, 'r') as fp:
+  with open('source_files/%s' % source_file, 'r') as fp:
     line_no = 1 # code lines are indexed from 1
     for line in fp.readlines():
       code_lines.append({'codeLineNumber': line_no, 'codeText': line.rstrip()})

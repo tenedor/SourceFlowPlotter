@@ -42,7 +42,7 @@ def teardown():
   pass
 
 
-# list of source code file names
+# list of source code file paths relative to source_files/ directory
 def source_files():
   return ['test.py']
 
