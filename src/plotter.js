@@ -318,7 +318,7 @@ _.extend(Plotter.prototype, Backbone.Events, {
 
     this.filteredData = {
       flowPoints: this.filterFn(originalFlowPoints),
-      flowGroups: this.originalData.flowGroups, // TODO - filter
+      flowGroups: this.filterFn(this.originalData.flowGroups),
       sourceCode: sourceCode,
       codeLinesDomain: codeLinesDomain,
       codeLineNumbers: codeLineNumbers
@@ -377,18 +377,20 @@ _.extend(Plotter.prototype, Backbone.Events, {
 
 
   // TODO: class method?
-  filterFn: function(flowPoints) {
+  filterFn: function(flowNodes) {
     var filter, min, max;
 
     filter = this.filter;
     if (_.isArray(filter.lines) && filter.lines.length) {
       min = filter.lines[0][0];
       max = filter.lines[0][1];
-      flowPoints = _.filter(flowPoints, function(flowPoint){
-        return (min <= flowPoint.lineNumber && flowPoint.lineNumber <= max);});
+      flowNodes = _.filter(flowNodes, function(node){
+        return (min <= node.internalCodeLineRange[1] &&
+            node.internalCodeLineRange[0] <= max);
+      });
     };
 
-    return flowPoints;
+    return flowNodes;
   },
 
 
