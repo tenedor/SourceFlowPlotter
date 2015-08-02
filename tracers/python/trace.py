@@ -438,7 +438,7 @@ source_flow_data = {
 }
 
 import json
-outfile = '../data/%s' % trace_script.outfile()
+outfile = '../../data/%s' % trace_script.outfile()
 with open(outfile, 'w') as fp:
   json.dump(source_flow_data, fp)
   print '\nprinted to %s' % outfile
