@@ -15,17 +15,12 @@
 
 (function(){
 
-// for now, data is hardcoded to a demo script called `test.py`
-var DATA_URL = 'data/test.py.trace.json';
-var FILE_NAME = 'test.py';
-
-
 // begin: create plotter and fetch flow points data for it
 $(document).ready(function() {
   sfp.plotter = new sfp.Plotter();
 
   // fetch, parse, and set up data, then pass it to the plotter
-  $.getJSON(DATA_URL, function(data) {
+  $.getJSON(sfp.DATA_URL, function(data) {
     setUpData(data, sfp.plotter.update);
   });
 });
@@ -91,7 +86,7 @@ var setUpData = function(data, callback) {
 
   // set up source code
   // TODO: generalize beyond one single file
-  sourceCode = data.sourceCode[FILE_NAME];
+  sourceCode = data.sourceCode[sfp.FILE_NAME];
   sourceCode.unshift(undefined);
 
   _.isFunction(callback) && callback({

@@ -276,7 +276,7 @@ var CodeLineAxis = views.CodeLineAxis = View.extend({
     this.selection.select('g').append('text')
       .classed('axis-label', true)
       .classed('code-axis-label', true)
-      .text('test.py') // TODO: generalize beyond single file
+      .text(sfp.FILE_NAME)
       .attr('text-anchor', 'middle')
       .attr('x', -this.layout.height / 2)
       .attr('y', 0)
